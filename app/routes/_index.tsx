@@ -1,8 +1,16 @@
 import { json, redirect } from '@remix-run/node'
-import { useLoaderData, Link } from '@remix-run/react'
+import { useLoaderData } from '@remix-run/react'
 import type { LoaderFunctionArgs } from '@remix-run/node'
 import { supabase } from '~/lib/supabase'
-import { PlusIcon, FolderIcon, CheckCircleIcon, ClockIcon } from '@heroicons/react/24/outline'
+import { useState, useEffect } from 'react'
+import TaskModal from '~/components/modals/TaskModal'
+import FolderModal from '~/components/modals/FolderModal'
+import NoteModal from '~/components/modals/NoteModal'
+import StatsCards from '~/components/dashboard/StatsCards'
+import QuickActions from '~/components/dashboard/QuickActions'
+import FoldersSection from '~/components/dashboard/FoldersSection'
+import TasksSection from '~/components/dashboard/TasksSection'
+import { useToastContext } from '~/contexts/ToastContext'
 
 export async function loader({ request }: LoaderFunctionArgs) {
   // 세션 확인 (현재는 간단한 방식)
@@ -39,19 +47,143 @@ export async function loader({ request }: LoaderFunctionArgs) {
     .eq('user_id', user.id)
     .order('created_at', { ascending: false })
 
+  // 각 폴더의 태스크와 노트 개수 가져오기
+  const foldersWithCounts = await Promise.all(
+    (folders || []).map(async (folder) => {
+      // 태스크 개수
+      const { count: taskCount } = await supabase
+        .from('tasks')
+        .select('*', { count: 'exact', head: true })
+        .eq('folder_id', folder.id)
+      
+      // 노트 개수
+      const { count: noteCount } = await supabase
+        .from('notes')
+        .select('*', { count: 'exact', head: true })
+        .eq('folder_id', folder.id)
+      
+      return {
+        ...folder,
+        taskCount: taskCount || 0,
+        noteCount: noteCount || 0
+      }
+    })
+  )
+
   return json({
     user,
-    folders: folders || [],
+    folders: foldersWithCounts,
     tasks: tasks || [],
   })
 }
 
 export default function Dashboard() {
   const { user, folders, tasks } = useLoaderData<typeof loader>()
+  const { showSuccess, showError } = useToastContext()
+  const [taskModalState, setTaskModalState] = useState<{
+    isOpen: boolean
+    mode: 'create' | 'edit'
+    task?: any
+  }>({
+    isOpen: false,
+    mode: 'create'
+  })
 
-  const completedTasks = tasks.filter(task => task.completed)
-  const pendingTasks = tasks.filter(task => !task.completed)
-  const highPriorityTasks = tasks.filter(task => task.priority === 'high' && !task.completed)
+  const [folderModalState, setFolderModalState] = useState<{
+    isOpen: boolean
+    mode: 'create' | 'edit'
+    folder?: any
+  }>({
+    isOpen: false,
+    mode: 'create'
+  })
+
+  const [noteModalState, setNoteModalState] = useState<{
+    isOpen: boolean
+    mode: 'create' | 'edit'
+    note?: any
+  }>({
+    isOpen: false,
+    mode: 'create'
+  })
+
+  // 로컬 태스크 상태 관리
+  const [localTasks, setLocalTasks] = useState(tasks)
+
+  const completedTasks = localTasks.filter(task => task.completed)
+  const pendingTasks = localTasks.filter(task => !task.completed)
+  const highPriorityTasks = localTasks.filter(task => task.priority === 'high' && !task.completed)
+
+  // URL 파라미터에서 성공/에러 메시지 확인
+  useEffect(() => {
+    const url = new URL(window.location.href)
+    const success = url.searchParams.get('success')
+    const message = url.searchParams.get('message')
+    const error = url.searchParams.get('error')
+    
+    if (success === 'true' && message) {
+      showSuccess('성공', decodeURIComponent(message))
+      // URL에서 파라미터 제거
+      url.searchParams.delete('success')
+      url.searchParams.delete('message')
+      window.history.replaceState({}, '', url.toString())
+    }
+    
+    if (error) {
+      showError('오류', decodeURIComponent(error))
+      // URL에서 파라미터 제거
+      url.searchParams.delete('error')
+      window.history.replaceState({}, '', url.toString())
+    }
+  }, [showSuccess, showError])
+
+  const handleCreateTask = () => {
+    setTaskModalState({
+      isOpen: true,
+      mode: 'create'
+    })
+  }
+
+  const handleCreateFolder = () => {
+    setFolderModalState({
+      isOpen: true,
+      mode: 'create'
+    })
+  }
+
+  const handleCreateNote = () => {
+    setNoteModalState({
+      isOpen: true,
+      mode: 'create'
+    })
+  }
+
+  // 클라이언트 사이드 완료 토글
+  const handleToggleComplete = async (taskId: string, completed: boolean) => {
+    try {
+      const response = await fetch(`/tasks/${taskId}/toggle?user=${user.username}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (response.ok) {
+        // 로컬 상태 업데이트
+        setLocalTasks(prevTasks => 
+          prevTasks.map(task => 
+            task.id === taskId 
+              ? { ...task, completed: !task.completed }
+              : task
+          )
+        )
+      } else {
+        console.error('태스크 상태 업데이트 실패')
+      }
+    } catch (error) {
+      console.error('태스크 상태 업데이트 중 오류:', error)
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -84,169 +216,71 @@ export default function Dashboard() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
-          {/* Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <CheckCircleIcon className="h-6 w-6 text-green-600" />
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
-                        완료된 태스크
-                      </dt>
-                      <dd className="text-lg font-medium text-gray-900 dark:text-white">
-                        {completedTasks.length}
-                      </dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <ClockIcon className="h-6 w-6 text-yellow-600" />
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
-                        대기 중인 태스크
-                      </dt>
-                      <dd className="text-lg font-medium text-gray-900 dark:text-white">
-                        {pendingTasks.length}
-                      </dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <FolderIcon className="h-6 w-6 text-blue-600" />
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
-                        폴더
-                      </dt>
-                      <dd className="text-lg font-medium text-gray-900 dark:text-white">
-                        {folders.length}
-                      </dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
-              <div className="p-5">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <div className="h-6 w-6 bg-red-600 rounded-full"></div>
-                  </div>
-                  <div className="ml-5 w-0 flex-1">
-                    <dl>
-                      <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
-                        긴급 태스크
-                      </dt>
-                      <dd className="text-lg font-medium text-gray-900 dark:text-white">
-                        {highPriorityTasks.length}
-                      </dd>
-                    </dl>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          {/* Stats Cards */}
+          <StatsCards
+            completedTasks={completedTasks.length}
+            pendingTasks={pendingTasks.length}
+            foldersCount={folders.length}
+            highPriorityTasks={highPriorityTasks.length}
+          />
 
           {/* Quick Actions */}
-          <div className="bg-white dark:bg-gray-800 shadow rounded-lg mb-8">
-            <div className="px-4 py-5 sm:p-6">
-              <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white mb-4">
-                빠른 작업
-              </h3>
-              <div className="flex space-x-4">
-                <Link
-                  to="/tasks/new"
-                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
-                >
-                  <PlusIcon className="h-4 w-4 mr-2" />
-                  새 태스크
-                </Link>
-                <Link
-                  to={`/folders?user=${user.username}`}
-                  className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
-                >
-                  <FolderIcon className="h-4 w-4 mr-2" />
-                  폴더 목록
-                </Link>
-                <Link
-                  to="/folders/new"
-                  className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
-                >
-                  <PlusIcon className="h-4 w-4 mr-2" />
-                  새 폴더
-                </Link>
-              </div>
-            </div>
-          </div>
+          <QuickActions
+            username={user.username}
+            onCreateTask={handleCreateTask}
+            onCreateFolder={handleCreateFolder}
+            onCreateNote={handleCreateNote}
+          />
 
-          {/* Recent Tasks */}
-          <div className="bg-white dark:bg-gray-800 shadow rounded-lg">
-            <div className="px-4 py-5 sm:p-6">
-              <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white mb-4">
-                최근 태스크
-              </h3>
-              {tasks.length === 0 ? (
-                <p className="text-gray-500 dark:text-gray-400">
-                  아직 태스크가 없습니다. 새 태스크를 만들어보세요!
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {tasks.slice(0, 5).map((task) => (
-                    <div
-                      key={task.id}
-                      className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg"
-                    >
-                      <div className="flex items-center space-x-3">
-                        <input
-                          type="checkbox"
-                          checked={task.completed}
-                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                          readOnly
-                        />
-                        <span className={`text-sm ${task.completed ? 'line-through text-gray-500' : 'text-gray-900 dark:text-white'}`}>
-                          {task.title}
-                        </span>
-                        {task.priority === 'high' && (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
-                            긴급
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-sm text-gray-500 dark:text-gray-400">
-                        {task.folder_id ? (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                            {folders.find(f => f.id === task.folder_id)?.name || 'Unknown'}
-                          </span>
-                        ) : null}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+          {/* Content Grid - 폴더와 태스크를 세로로 배치 */}
+          <div className="space-y-8">
+            {/* Folders Section */}
+            <FoldersSection
+              folders={folders}
+              username={user.username}
+              onCreateFolder={handleCreateFolder}
+            />
+
+            {/* Tasks Section */}
+            <TasksSection
+              tasks={localTasks}
+              folders={folders}
+              username={user.username}
+              onCreateTask={handleCreateTask}
+              onToggleComplete={handleToggleComplete}
+            />
           </div>
         </div>
       </main>
+
+      {/* 태스크 모달 */}
+      <TaskModal
+        isOpen={taskModalState.isOpen}
+        onClose={() => setTaskModalState({ isOpen: false, mode: 'create' })}
+        task={taskModalState.task}
+        mode={taskModalState.mode}
+        username={user.username}
+        folders={folders}
+      />
+
+      {/* 폴더 모달 */}
+      <FolderModal
+        isOpen={folderModalState.isOpen}
+        onClose={() => setFolderModalState({ isOpen: false, mode: 'create' })}
+        folder={folderModalState.folder}
+        mode={folderModalState.mode}
+        username={user.username}
+      />
+
+      {/* 노트 모달 */}
+      <NoteModal
+        isOpen={noteModalState.isOpen}
+        onClose={() => setNoteModalState({ isOpen: false, mode: 'create' })}
+        note={noteModalState.note}
+        mode={noteModalState.mode}
+        username={user.username}
+        folders={folders}
+      />
     </div>
   )
 }

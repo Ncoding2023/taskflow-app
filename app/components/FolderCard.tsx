@@ -15,11 +15,12 @@ interface Folder {
 interface FolderCardProps {
   folder: Folder
   taskCount?: number
+  username?: string
   onEdit?: (folder: Folder) => void
   onDelete?: (folder: Folder) => void
 }
 
-const FolderCard = ({ folder, taskCount = 0, onEdit, onDelete }: FolderCardProps) => {
+const FolderCard = ({ folder, taskCount = 0, username, onEdit, onDelete }: FolderCardProps) => {
   return (
     <Card hover className="group">
       <div className="flex items-start justify-between">
@@ -32,7 +33,7 @@ const FolderCard = ({ folder, taskCount = 0, onEdit, onDelete }: FolderCardProps
           </div>
           <div className="flex-1 min-w-0">
             <Link 
-              to={`/folders/${folder.id}`}
+              to={username ? `/folders/${folder.id}?user=${username}` : `/folders/${folder.id}`}
               className="text-lg font-medium text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400 truncate block"
             >
               {folder.name}
