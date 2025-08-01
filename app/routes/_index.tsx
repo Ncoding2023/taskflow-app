@@ -182,10 +182,17 @@ export default function Dashboard() {
                   새 태스크
                 </Link>
                 <Link
-                  to="/folders/new"
+                  to={`/folders?user=${user.username}`}
                   className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
                 >
                   <FolderIcon className="h-4 w-4 mr-2" />
+                  폴더 목록
+                </Link>
+                <Link
+                  to="/folders/new"
+                  className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-md text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600"
+                >
+                  <PlusIcon className="h-4 w-4 mr-2" />
                   새 폴더
                 </Link>
               </div>
