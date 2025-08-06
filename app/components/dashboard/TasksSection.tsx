@@ -21,6 +21,7 @@ interface TasksSectionProps {
   username: string
   onCreateTask: () => void
   onToggleComplete: (taskId: string, completed: boolean) => void
+  onDeleteTask?: (task: Task) => void
 }
 
 export default function TasksSection({ 
@@ -28,7 +29,8 @@ export default function TasksSection({
   folders, 
   username, 
   onCreateTask, 
-  onToggleComplete 
+  onToggleComplete,
+  onDeleteTask
 }: TasksSectionProps) {
   return (
     <div className="bg-white dark:bg-gray-800 shadow rounded-lg">
@@ -62,6 +64,7 @@ export default function TasksSection({
                 folders={folders}
                 username={username}
                 onToggleComplete={onToggleComplete}
+                onDeleteTask={onDeleteTask}
               />
             ))}
           </div>

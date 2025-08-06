@@ -20,14 +20,18 @@ interface TaskItemProps {
   folders: Folder[]
   username: string
   onToggleComplete: (taskId: string, completed: boolean) => void
+  onDeleteTask?: (task: Task) => void
 }
 
-export default function TaskItem({ task, folders, username, onToggleComplete }: TaskItemProps) {
+export default function TaskItem({ task, folders, username, onToggleComplete, onDeleteTask }: TaskItemProps) {
   return (
     <div className="flex items-start space-x-3 p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
       {/* 체크박스 - 태스크 목록과 동일한 스타일 */}
       <button
-        onClick={() => onToggleComplete(task.id, !task.completed)}
+        onClick={(e) => {
+          e.stopPropagation()
+          onToggleComplete(task.id, !task.completed)
+        }}
         className={`flex-shrink-0 mt-1 p-1 rounded-full transition-colors ${
           task.completed
             ? 'bg-green-500 text-white'
@@ -82,13 +86,15 @@ export default function TaskItem({ task, folders, username, onToggleComplete }: 
             </span>
           )}
           
-          {/* 관리 링크 */}
-          <Link
-            to={`/tasks?user=${username}`}
-            className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-          >
-            관리 →
-          </Link>
+          {/* 폴더로 이동 링크 */}
+          {task.folder_id && (
+            <Link
+              to={`/folders/${task.folder_id}?user=${username}`}
+              className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+            >
+              폴더 보기 →
+            </Link>
+          )}
         </div>
       </div>
     </div>

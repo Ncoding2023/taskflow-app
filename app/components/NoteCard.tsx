@@ -1,4 +1,4 @@
-import { DocumentTextIcon, FolderIcon, CalendarIcon } from '@heroicons/react/24/outline'
+import { DocumentTextIcon, FolderIcon, CalendarIcon, TrashIcon } from '@heroicons/react/24/outline'
 import Card from './ui/Card'
 import Button from './ui/Button'
 
@@ -36,7 +36,10 @@ export default function NoteCard({ note, folderName, onEdit, onDelete }: NoteCar
   }
 
   return (
-    <Card className="transition-all duration-200 hover:shadow-md group">
+    <Card 
+      className="transition-all duration-200 hover:shadow-md group cursor-pointer" 
+      onClick={() => onEdit(note)}
+    >
       <div className="flex items-start space-x-3">
         {/* 노트 아이콘 */}
         <div className="flex-shrink-0 mt-1">
@@ -57,24 +60,17 @@ export default function NoteCard({ note, folderName, onEdit, onDelete }: NoteCar
               )}
             </div>
 
-            {/* 액션 버튼들 */}
+            {/* 삭제 버튼 */}
             <div className="flex items-center space-x-1 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => onEdit(note)}
-                className="px-2 py-1 text-xs"
+              <button
+                onClick={(e: React.MouseEvent) => {
+                  e.stopPropagation()
+                  onDelete(note)
+                }}
+                className="px-2 py-1 text-xs text-red-600 hover:text-red-700 bg-transparent border-none cursor-pointer"
               >
-                편집
-              </Button>
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={() => onDelete(note)}
-                className="px-2 py-1 text-xs text-red-600 hover:text-red-700"
-              >
-                삭제
-              </Button>
+                <TrashIcon className="w-4 h-4" />
+              </button>
             </div>
           </div>
 

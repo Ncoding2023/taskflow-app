@@ -11,6 +11,7 @@ import { useState, useCallback } from "react";
 import "./tailwind.css";
 import ToastContainer, { useToast } from "~/components/ui/ToastContainer";
 import { ToastProvider } from "~/contexts/ToastContext";
+import { ThemeProvider } from "~/contexts/ThemeContext";
 
 export const links: LinksFunction = () => [
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
@@ -45,8 +46,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
-    <ToastProvider>
-      <Outlet />
-    </ToastProvider>
+    <ThemeProvider>
+      <ToastProvider>
+        <Outlet />
+      </ToastProvider>
+    </ThemeProvider>
   );
 }

@@ -3,6 +3,7 @@ import { json, redirect } from '@remix-run/node'
 import type { ActionFunctionArgs } from '@remix-run/node'
 import { supabase } from '~/lib/supabase'
 import { createHash } from 'crypto'
+import ThemeToggle from '~/components/ui/ThemeToggle'
 
 export async function action({ request }: ActionFunctionArgs) {
   const formData = await request.formData()
@@ -55,6 +56,11 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
+      {/* 테마 토글 버튼 */}
+      <div className="absolute top-4 right-4">
+        <ThemeToggle size="sm" />
+      </div>
+      
       <div className="max-w-md w-full space-y-8">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900 dark:text-white">

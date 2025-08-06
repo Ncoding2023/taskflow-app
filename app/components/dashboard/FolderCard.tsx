@@ -22,16 +22,16 @@ export default function FolderCard({ folder, username, onDelete }: FolderCardPro
 
   return (
     <div 
-      className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors relative group"
+      className="p-3 sm:p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors relative group"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div className="flex items-start space-x-3">
+      <div className="flex items-start space-x-2 sm:space-x-3">
         <div 
-          className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+          className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center flex-shrink-0"
           style={{ backgroundColor: folder.color }}
         >
-          <FolderIcon className="w-6 h-6 text-white" />
+          <FolderIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
         </div>
         
         <div className="flex-1 min-w-0">
@@ -46,17 +46,17 @@ export default function FolderCard({ folder, username, onDelete }: FolderCardPro
           </p>
           
           {/* 태스크와 노트 개수 */}
-          <div className="flex items-center space-x-4 mt-2">
+          <div className="flex items-center space-x-2 sm:space-x-4 mt-2">
             <div className="flex items-center space-x-1">
-              <CheckCircleIcon className="w-4 h-4 text-green-600" />
+              <CheckCircleIcon className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" />
               <span className="text-xs text-gray-600 dark:text-gray-400">
-                {folder.taskCount}개 태스크
+                {folder.taskCount}개
               </span>
             </div>
             <div className="flex items-center space-x-1">
-              <DocumentTextIcon className="w-4 h-4 text-blue-600" />
+              <DocumentTextIcon className="w-3 h-3 sm:w-4 sm:h-4 text-blue-600" />
               <span className="text-xs text-gray-600 dark:text-gray-400">
-                {folder.noteCount}개 노트
+                {folder.noteCount}개
               </span>
             </div>
           </div>
@@ -75,7 +75,7 @@ export default function FolderCard({ folder, username, onDelete }: FolderCardPro
         {isHovered && onDelete && (
           <button
             onClick={() => onDelete(folder)}
-            className="text-xs text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+            className="text-xs text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors p-1"
             title="폴더 삭제"
           >
             <TrashIcon className="w-4 h-4" />

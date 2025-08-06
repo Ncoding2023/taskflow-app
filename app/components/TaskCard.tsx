@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CheckCircleIcon, ClockIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline'
+import { CheckCircleIcon, ClockIcon, ExclamationTriangleIcon, TrashIcon } from '@heroicons/react/24/outline'
 import Card from './ui/Card'
 import Button from './ui/Button'
 
@@ -49,6 +49,8 @@ export default function TaskCard({ task, folderName, onToggleComplete, onEdit, o
   const priority = priorityConfig[task.priority]
   const PriorityIcon = priority.icon
 
+
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
     return date.toLocaleDateString('ko-KR', {
@@ -61,17 +63,21 @@ export default function TaskCard({ task, folderName, onToggleComplete, onEdit, o
   const isOverdue = task.due_date && new Date(task.due_date) < new Date() && !task.completed
 
   return (
-    <Card
-      className={`transition-all duration-200 ${
+    <div
+      className={`bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-4 transition-all duration-200 cursor-pointer hover:shadow-md ${
         task.completed ? 'opacity-75' : ''
       } ${isOverdue ? 'border-red-300 bg-red-50' : ''}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
+      onClick={() => onEdit(task)}
     >
       <div className="flex items-start space-x-3">
         {/* 체크박스 */}
         <button
-          onClick={() => onToggleComplete(task.id, !task.completed)}
+          onClick={(e) => {
+            e.stopPropagation()
+            onToggleComplete(task.id, !task.completed)
+          }}
           className={`flex-shrink-0 mt-1 p-1 rounded-full transition-colors ${
             task.completed
               ? 'bg-green-500 text-white'
@@ -99,25 +105,18 @@ export default function TaskCard({ task, folderName, onToggleComplete, onEdit, o
               )}
             </div>
 
-            {/* 액션 버튼들 */}
+            {/* 삭제 버튼 */}
             {isHovered && (
               <div className="flex items-center space-x-1 ml-2">
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => onEdit(task)}
-                  className="px-2 py-1 text-xs"
+                <button
+                  onClick={(e: React.MouseEvent) => {
+                    e.stopPropagation()
+                    onDelete(task)
+                  }}
+                  className="px-2 py-1 text-xs text-red-600 hover:text-red-700 bg-transparent border-none cursor-pointer"
                 >
-                  편집
-                </Button>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  onClick={() => onDelete(task)}
-                  className="px-2 py-1 text-xs text-red-600 hover:text-red-700"
-                >
-                  삭제
-                </Button>
+                  <TrashIcon className="w-4 h-4" />
+                </button>
               </div>
             )}
           </div>
@@ -149,8 +148,8 @@ export default function TaskCard({ task, folderName, onToggleComplete, onEdit, o
               </span>
             )}
           </div>
-        </div>
-      </div>
-    </Card>
-  )
-} 
+                 </div>
+       </div>
+     </div>
+   )
+ } 

@@ -10,6 +10,10 @@ export interface ToastProps {
   message?: string
   duration?: number
   onClose: (id: string) => void
+  action?: {
+    label: string
+    onClick: () => void
+  }
 }
 
 const toastStyles = {
@@ -47,7 +51,7 @@ const toastStyles = {
   }
 }
 
-export default function Toast({ id, type, title, message, duration = 2000, onClose }: ToastProps) {
+export default function Toast({ id, type, title, message, duration = 2000, onClose, action }: ToastProps) {
   const [isVisible, setIsVisible] = useState(true)
   const styles = toastStyles[type]
   const Icon = styles.icon
@@ -88,6 +92,20 @@ export default function Toast({ id, type, title, message, duration = 2000, onClo
               <p className={`mt-1 text-sm ${styles.messageColor}`}>
                 {message}
               </p>
+            )}
+            {action && (
+              <div className="mt-3 flex space-x-2">
+                <button
+                  type="button"
+                  className={`inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md ${styles.iconColor} bg-white dark:bg-gray-700 border border-current hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors`}
+                  onClick={() => {
+                    action.onClick()
+                    handleClose()
+                  }}
+                >
+                  {action.label}
+                </button>
+              </div>
             )}
           </div>
           <div className="ml-4 flex flex-shrink-0">

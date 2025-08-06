@@ -6,11 +6,14 @@ import { useState, useEffect } from 'react'
 import TaskModal from '~/components/modals/TaskModal'
 import FolderModal from '~/components/modals/FolderModal'
 import NoteModal from '~/components/modals/NoteModal'
+
 import StatsCards from '~/components/dashboard/StatsCards'
 import QuickActions from '~/components/dashboard/QuickActions'
 import FoldersSection from '~/components/dashboard/FoldersSection'
 import TasksSection from '~/components/dashboard/TasksSection'
+import DeadlineSection from '~/components/dashboard/DeadlineSection'
 import { useToastContext } from '~/contexts/ToastContext'
+import ThemeToggle from '~/components/ui/ThemeToggle'
 
 export async function loader({ request }: LoaderFunctionArgs) {
   // 세션 확인 (현재는 간단한 방식)
@@ -107,6 +110,10 @@ export default function Dashboard() {
     mode: 'create'
   })
 
+
+
+
+
   // 로컬 태스크 상태 관리
   const [localTasks, setLocalTasks] = useState(tasks)
 
@@ -158,10 +165,19 @@ export default function Dashboard() {
     })
   }
 
+
+
   // 클라이언트 사이드 완료 토글
   const handleToggleComplete = async (taskId: string, completed: boolean) => {
     try {
-      const response = await fetch(`/tasks/${taskId}/toggle?user=${user.username}`, {
+      // 태스크의 폴더 ID 찾기
+      const task = localTasks.find(t => t.id === taskId)
+      if (!task || !task.folder_id) {
+        console.error('태스크 또는 폴더 ID를 찾을 수 없습니다')
+        return
+      }
+
+      const response = await fetch(`/folders/${task.folder_id}/tasks/${taskId}/toggle?user=${user.username}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -177,33 +193,41 @@ export default function Dashboard() {
               : task
           )
         )
+        showSuccess('성공', '태스크 상태가 업데이트되었습니다.')
       } else {
         console.error('태스크 상태 업데이트 실패')
+        showError('오류', '태스크 상태 업데이트에 실패했습니다.')
       }
     } catch (error) {
       console.error('태스크 상태 업데이트 중 오류:', error)
+      showError('오류', '태스크 상태 업데이트 중 오류가 발생했습니다.')
     }
   }
+
+
+
+
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
       <header className="bg-white dark:bg-gray-800 shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
+          <div className="flex justify-between items-center py-4 sm:py-6">
             <div className="flex items-center">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
                 TaskFlow
               </h1>
             </div>
-            <div className="flex items-center space-x-4">
-              <span className="text-sm text-gray-500 dark:text-gray-400">
+            <div className="flex items-center space-x-2 sm:space-x-4">
+              <ThemeToggle size="sm" />
+              <span className="hidden sm:block text-sm text-gray-500 dark:text-gray-400">
                 {user.display_name}
               </span>
               <form action="/auth/logout" method="post">
                 <button
                   type="submit"
-                  className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                  className="text-xs sm:text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
                 >
                   로그아웃
                 </button>
@@ -214,8 +238,8 @@ export default function Dashboard() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
+      <main className="max-w-7xl mx-auto py-4 sm:py-6 px-4 sm:px-6 lg:px-8">
+        <div className="space-y-6">
           {/* Stats Cards */}
           <StatsCards
             completedTasks={completedTasks.length}
@@ -224,21 +248,29 @@ export default function Dashboard() {
             highPriorityTasks={highPriorityTasks.length}
           />
 
-          {/* Quick Actions */}
-          <QuickActions
-            username={user.username}
-            onCreateTask={handleCreateTask}
-            onCreateFolder={handleCreateFolder}
-            onCreateNote={handleCreateNote}
-          />
+          {/* Quick Actions - 폴더가 있을 때만 표시 */}
+          {folders.length > 0 && (
+            <QuickActions
+              onCreateFolder={handleCreateFolder}
+            />
+          )}
 
           {/* Content Grid - 폴더와 태스크를 세로로 배치 */}
-          <div className="space-y-8">
+          <div className="space-y-6 sm:space-y-8">
             {/* Folders Section */}
             <FoldersSection
               folders={folders}
               username={user.username}
               onCreateFolder={handleCreateFolder}
+            />
+
+            {/* Deadline Section */}
+            <DeadlineSection
+              tasks={localTasks}
+              folders={folders}
+              username={user.username}
+              onToggleComplete={handleToggleComplete}
+              onEditTask={(task) => setTaskModalState({ isOpen: true, mode: 'edit', task })}
             />
 
             {/* Tasks Section */}
@@ -281,6 +313,8 @@ export default function Dashboard() {
         username={user.username}
         folders={folders}
       />
+
+
     </div>
   )
 }

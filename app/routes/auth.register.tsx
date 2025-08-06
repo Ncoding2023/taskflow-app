@@ -4,6 +4,7 @@ import type { ActionFunctionArgs } from '@remix-run/node'
 import { supabase } from '~/lib/supabase'
 import { randomUUID } from 'crypto'
 import { createHash } from 'crypto'
+import ThemeToggle from '~/components/ui/ThemeToggle'
 
 export async function action({ request }: ActionFunctionArgs) {
   console.log('=== 회원가입 액션 시작 ===')

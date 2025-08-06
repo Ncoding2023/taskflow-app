@@ -6,7 +6,11 @@ import { supabase } from '~/lib/supabase'
 import TaskCard from '~/components/TaskCard'
 import NoteCard from '~/components/NoteCard'
 import Button from '~/components/ui/Button'
+import TaskModal from '~/components/modals/TaskModal'
+import NoteModal from '~/components/modals/NoteModal'
+import ConfirmModal from '~/components/ui/ConfirmModal'
 import { useState } from 'react'
+import { useToastContext } from '~/contexts/ToastContext'
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
   const folderId = params.id
@@ -72,9 +76,25 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 
 export default function FolderDetail() {
   const { user, folder, tasks, notes } = useLoaderData<typeof loader>()
+  const { showSuccess, showError } = useToastContext()
   
   // 로컬 태스크 상태 관리
   const [localTasks, setLocalTasks] = useState(tasks)
+  const [taskModalState, setTaskModalState] = useState<{ isOpen: boolean; mode: 'create' | 'edit'; task?: any }>({
+    isOpen: false,
+    mode: 'create'
+  })
+  
+  // 삭제 확인 모달 상태
+  const [deleteModalState, setDeleteModalState] = useState<{ isOpen: boolean; task?: any; note?: any }>({
+    isOpen: false
+  })
+
+  // 노트 모달 상태
+  const [noteModalState, setNoteModalState] = useState<{ isOpen: boolean; mode: 'create' | 'edit'; note?: any }>({
+    isOpen: false,
+    mode: 'create'
+  })
 
   const completedTasks = localTasks.filter(task => task.completed)
   const pendingTasks = localTasks.filter(task => !task.completed)
@@ -82,7 +102,7 @@ export default function FolderDetail() {
   // 클라이언트 사이드 완료 토글
   const handleToggleComplete = async (taskId: string, completed: boolean) => {
     try {
-      const response = await fetch(`/tasks/${taskId}/toggle?user=${user.username}`, {
+      const response = await fetch(`/folders/${folder.id}/tasks/${taskId}/toggle?user=${user.username}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -103,6 +123,78 @@ export default function FolderDetail() {
       }
     } catch (error) {
       console.error('태스크 상태 업데이트 중 오류:', error)
+    }
+  }
+
+  // 태스크 생성 핸들러
+  const handleCreateTask = () => {
+    setTaskModalState({ isOpen: true, mode: 'create' })
+  }
+
+  // 태스크 편집 핸들러
+  const handleEditTask = (task: any) => {
+    setTaskModalState({ isOpen: true, mode: 'edit', task })
+  }
+
+  // 태스크 삭제 확인 핸들러
+  const handleDeleteTask = (task: any) => {
+    setDeleteModalState({ isOpen: true, task })
+  }
+
+  // 노트 생성 핸들러
+  const handleCreateNote = () => {
+    setNoteModalState({ isOpen: true, mode: 'create' })
+  }
+
+  // 노트 편집 핸들러
+  const handleEditNote = (note: any) => {
+    setNoteModalState({ isOpen: true, mode: 'edit', note })
+  }
+
+  // 노트 삭제 확인 핸들러
+  const handleDeleteNote = (note: any) => {
+    setDeleteModalState({ isOpen: true, note })
+  }
+
+  // 실제 삭제 실행 핸들러
+  const handleConfirmDelete = async () => {
+    const task = deleteModalState.task
+    const note = deleteModalState.note
+
+    if (task) {
+      try {
+        const response = await fetch(`/folders/${folder.id}/tasks/${task.id}/delete?user=${user.username}`, {
+          method: 'POST',
+        })
+
+        if (response.ok) {
+          // 로컬 상태에서 태스크 제거
+          setLocalTasks(prevTasks => prevTasks.filter(t => t.id !== task.id))
+          showSuccess('성공', '태스크가 삭제되었습니다.')
+        } else {
+          showError('오류 발생', '태스크 삭제에 실패했습니다.')
+        }
+      } catch (error) {
+        console.error('태스크 삭제 중 오류:', error)
+        showError('오류 발생', '태스크 삭제 중 오류가 발생했습니다.')
+      }
+         } else if (note) {
+       try {
+         const response = await fetch(`/folders/${folder.id}/notes/${note.id}/delete?user=${user.username}`, {
+           method: 'POST',
+         })
+
+        if (response.ok) {
+          // 페이지 새로고침으로 노트 목록 업데이트
+          window.location.reload()
+          showSuccess('성공', '노트가 삭제되었습니다.')
+        } else {
+          showError('오류 발생', '노트 삭제에 실패했습니다.')
+        }
+      } catch (error) {
+        console.error('노트 삭제 중 오류:', error)
+        showError('오류 발생', '노트 삭제 중 오류가 발생했습니다.')
+      }
     }
   }
 
@@ -232,12 +324,14 @@ export default function FolderDetail() {
                   <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white">
                     태스크
                   </h3>
-                  <Link
-                    to={`/tasks?user=${user.username}`}
-                    className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+                  <Button
+                    onClick={handleCreateTask}
+                    size="sm"
+                    className="flex items-center space-x-1"
                   >
-                    모든 태스크 보기 →
-                  </Link>
+                    <PlusIcon className="w-4 h-4" />
+                    <span>새 태스크</span>
+                  </Button>
                 </div>
                 
                 {localTasks.length === 0 ? (
@@ -247,62 +341,13 @@ export default function FolderDetail() {
                 ) : (
                   <div className="space-y-3">
                     {localTasks.slice(0, 5).map((task) => (
-                      <div
+                      <TaskCard
                         key={task.id}
-                        className="flex items-start space-x-3 p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                      >
-                        {/* 체크박스 - 태스크 목록과 동일한 스타일 */}
-                        <button
-                          onClick={() => handleToggleComplete(task.id, !task.completed)}
-                          className={`flex-shrink-0 mt-1 p-1 rounded-full transition-colors ${
-                            task.completed
-                              ? 'bg-green-500 text-white'
-                              : 'bg-gray-200 hover:bg-gray-300 text-gray-600'
-                          }`}
-                        >
-                          <CheckCircleIcon className="h-4 w-4" />
-                        </button>
-
-                        {/* 태스크 내용 */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <h3 className={`text-sm font-medium ${
-                                task.completed ? 'line-through text-gray-500' : 'text-gray-900 dark:text-white'
-                              }`}>
-                                {task.title}
-                              </h3>
-                              {task.description && (
-                                <p className={`mt-1 text-sm ${
-                                  task.completed ? 'line-through text-gray-400' : 'text-gray-600 dark:text-gray-400'
-                                }`}>
-                                  {task.description}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* 메타 정보 */}
-                          <div className="flex items-center space-x-2 mt-2">
-                            {/* 우선순위 */}
-                            {task.priority === 'high' && (
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
-                                긴급
-                              </span>
-                            )}
-                            {task.priority === 'medium' && (
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
-                                보통
-                              </span>
-                            )}
-                            {task.priority === 'low' && (
-                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200">
-                                낮음
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
+                        task={task}
+                        onToggleComplete={handleToggleComplete}
+                        onEdit={handleEditTask}
+                        onDelete={handleDeleteTask}
+                      />
                     ))}
                   </div>
                 )}
@@ -312,46 +357,78 @@ export default function FolderDetail() {
             {/* Notes Section */}
             <div className="bg-white dark:bg-gray-800 shadow rounded-lg">
               <div className="px-4 py-5 sm:p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white">
-                    노트
-                  </h3>
-                  <Link
-                    to={`/notes?user=${user.username}`}
-                    className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                  >
-                    모든 노트 보기 →
-                  </Link>
-                </div>
+                                 <div className="flex items-center justify-between mb-4">
+                   <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-white">
+                     노트
+                   </h3>
+                                       <Button
+                      onClick={handleCreateNote}
+                      size="sm"
+                      className="flex items-center space-x-1"
+                    >
+                      <PlusIcon className="w-4 h-4" />
+                      <span>새 노트</span>
+                    </Button>
+                 </div>
                 
-                {notes.length === 0 ? (
-                  <p className="text-gray-500 dark:text-gray-400 text-sm">
-                    이 폴더에 노트가 없습니다.
-                  </p>
-                ) : (
-                  <div className="space-y-3">
-                    {notes.slice(0, 5).map((note) => (
-                      <div
-                        key={note.id}
-                        className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                      >
-                        <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-1">
-                          {note.title}
-                        </h4>
-                        {note.content && (
-                          <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
-                            {note.content.length > 100 ? note.content.substring(0, 100) + '...' : note.content}
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
+                                 {notes.length === 0 ? (
+                   <p className="text-gray-500 dark:text-gray-400 text-sm">
+                     이 폴더에 노트가 없습니다.
+                   </p>
+                 ) : (
+                   <div className="space-y-3">
+                     {notes.slice(0, 5).map((note) => (
+                       <NoteCard
+                         key={note.id}
+                         note={note}
+                         folderName={folder.name}
+                         onEdit={handleEditNote}
+                         onDelete={handleDeleteNote}
+                       />
+                     ))}
+                   </div>
+                 )}
               </div>
             </div>
-          </div>
-        </div>
-      </main>
-    </div>
-  )
-} 
+                     </div>
+         </div>
+       </main>
+
+                        {/* 태스크 모달 */}
+         <TaskModal
+           isOpen={taskModalState.isOpen}
+           onClose={() => setTaskModalState({ isOpen: false, mode: 'create' })}
+           task={taskModalState.task}
+           mode={taskModalState.mode}
+           username={user.username}
+           folders={[folder]} // 현재 폴더만 전달
+         />
+
+         {/* 노트 모달 */}
+         <NoteModal
+           isOpen={noteModalState.isOpen}
+           onClose={() => setNoteModalState({ isOpen: false, mode: 'create' })}
+           note={noteModalState.note}
+           mode={noteModalState.mode}
+           username={user.username}
+           folders={[folder]} // 현재 폴더만 전달
+         />
+
+         {/* 삭제 확인 모달 */}
+         <ConfirmModal
+           isOpen={deleteModalState.isOpen}
+           onClose={() => setDeleteModalState({ isOpen: false })}
+           onConfirm={handleConfirmDelete}
+           title={deleteModalState.task ? "🗑️ 태스크 삭제" : "🗑️ 노트 삭제"}
+           message={
+             deleteModalState.task 
+               ? `"${deleteModalState.task.title}" 태스크를 삭제하시겠습니까?`
+               : `"${deleteModalState.note?.title}" 노트를 삭제하시겠습니까?`
+           }
+           confirmText="삭제"
+           cancelText="취소"
+           type="danger"
+         />
+      </div>
+    )
+ } 
