@@ -9,6 +9,7 @@ TaskFlow는 개인 작업 관리를 위한 웹 애플리케이션입니다.
 - ✅ **노트 관리**: 아이디어와 메모 기록
 - ✅ **사용자 인증**: 사용자명 기반 로그인/회원가입
 - ✅ **모달 기반 UX**: 모든 CRUD 작업이 모달로 통일
+- ✅ **외부 서비스 연동**: 날씨 정보와 공개 캘린더 이벤트 표시
 
 ## 기술 스택
 
@@ -27,6 +28,9 @@ TaskFlow는 개인 작업 관리를 위한 웹 애플리케이션입니다.
 # Supabase 설정
 SUPABASE_URL=your_supabase_url_here
 SUPABASE_KEY=your_supabase_anon_key_here
+
+# OpenWeather API (선택사항 - 날씨 기능 사용 시)
+OPENWEATHER_API_KEY=your_openweather_api_key_here
 
 # 앱 설정
 APP_URL=http://localhost:5173

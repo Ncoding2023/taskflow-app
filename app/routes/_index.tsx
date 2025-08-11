@@ -1,19 +1,25 @@
-import { json, redirect } from '@remix-run/node'
+import { json, type LoaderFunctionArgs, redirect } from '@remix-run/node'
 import { useLoaderData } from '@remix-run/react'
-import type { LoaderFunctionArgs } from '@remix-run/node'
-import { supabase } from '~/lib/supabase'
 import { useState, useEffect } from 'react'
+import { weatherService } from '~/lib/external-services'
+
+import { supabase } from '~/lib/supabase'
 import TaskModal from '~/components/modals/TaskModal'
 import FolderModal from '~/components/modals/FolderModal'
 import NoteModal from '~/components/modals/NoteModal'
 
-import StatsCards from '~/components/dashboard/StatsCards'
+import StatisticsSection from '~/components/dashboard/StatisticsSection'
 import QuickActions from '~/components/dashboard/QuickActions'
 import FoldersSection from '~/components/dashboard/FoldersSection'
 import TasksSection from '~/components/dashboard/TasksSection'
 import DeadlineSection from '~/components/dashboard/DeadlineSection'
+import Header from '~/components/layout/Header'
 import { useToastContext } from '~/contexts/ToastContext'
-import ThemeToggle from '~/components/ui/ThemeToggle'
+
+// 임시 디버깅용 로그 제거
+// console.log('🔍 환경 변수 디버깅:')
+// console.log('- import.meta.env.VITE_GOOGLE_CALENDAR_API_KEY:', import.meta.env.VITE_GOOGLE_CALENDAR_API_KEY)
+// console.log('- import.meta.env:', import.meta.env)
 
 export async function loader({ request }: LoaderFunctionArgs) {
   // 세션 확인 (현재는 간단한 방식)
@@ -76,7 +82,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   return json({
     user,
     folders: foldersWithCounts,
-    tasks: tasks || [],
+    tasks: tasks || []
   })
 }
 
@@ -211,42 +217,21 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <header className="bg-white dark:bg-gray-800 shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4 sm:py-6">
-            <div className="flex items-center">
-              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
-                TaskFlow
-              </h1>
-            </div>
-            <div className="flex items-center space-x-2 sm:space-x-4">
-              <ThemeToggle size="sm" />
-              <span className="hidden sm:block text-sm text-gray-500 dark:text-gray-400">
-                {user.display_name}
-              </span>
-              <form action="/auth/logout" method="post">
-                <button
-                  type="submit"
-                  className="text-xs sm:text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 px-2 py-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
-                >
-                  로그아웃
-                </button>
-              </form>
-            </div>
-          </div>
-        </div>
-      </header>
+      <Header username={user.username} />
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto py-4 sm:py-6 px-4 sm:px-6 lg:px-8">
         <div className="space-y-6">
-          {/* Stats Cards */}
-          <StatsCards
-            completedTasks={completedTasks.length}
-            pendingTasks={pendingTasks.length}
-            foldersCount={folders.length}
-            highPriorityTasks={highPriorityTasks.length}
+          {/* Statistics Section */}
+          <StatisticsSection
+            tasks={localTasks}
+            folders={folders}
           />
+
+                        {/* External Services Widgets */}
+              <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
+                {/* Removed CalendarWidget as per edit hint */}
+              </div>
 
           {/* Quick Actions - 폴더가 있을 때만 표시 */}
           {folders.length > 0 && (
